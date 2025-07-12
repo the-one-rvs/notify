@@ -11,7 +11,7 @@ const router = Router();
 
 //role based routes
 router.route("/register").post(verifyJWT,allowRoles("admin"),registerUser)
-router.route("/register").get(verifyJWT,allowRoles("admin"),getAllUsernames)
-router.route("/register").post(verifyJWT,allowRoles("admin"),updateUserRole)
+router.route("/all-usernames").get(verifyJWT,allowRoles("admin"),getAllUsernames)
+router.route("/update-user-role").post(verifyJWT,allowRoles("admin"),updateUserRole)
 
 export default router

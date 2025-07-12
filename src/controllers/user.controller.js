@@ -14,8 +14,8 @@ const generateAccessAndRefereshTokens = async (userID) => {
         }
 
         // creating the access and refresh tokens 
-        accessToken = user.generateAccessToken()
-        refreshToken = user.genraterefreshToken()
+        const accessToken = await user.generateAccessToken()
+        const refreshToken = await user.generateRefreshToken()
 
         // saving refresh token in db 
         user.refreshToken = refreshToken

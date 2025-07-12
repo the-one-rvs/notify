@@ -12,6 +12,6 @@ router.route("/refresh-tokens").post(refreshUserAccessToken)
 //secured routes
 router.route("/change-password").post(verifyJWT, changeCurrentPassword)
 router.route("/update-account-details").patch(verifyJWT, updateCurrentAccountDetails)
-router.route("/").post(changeCurrentPassword)
+// router.route("/").post(changeCurrentPassword)
 
 export default router
