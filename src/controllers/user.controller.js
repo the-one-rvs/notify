@@ -181,6 +181,23 @@ const logoutUser = asyncHandler(async (req,res) => {
         .json(new ApiResponse(200, {}, "User logged out successfully"));
 })
 
+const currentUser = asyncHandler(async(req, res) => {
+    const user = req.user
+    const checkUser = await User.findById(user._id).select(
+        "-password -refreshToken"
+    )
+    if (!checkUser){
+        throw new ApiError(400, "User is not found in DB")
+    }
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        user,
+        "User Fetched Successfully"
+    ))
+})
+
 const refreshUserAccessToken = asyncHandler(async (req,res) => {
     // Get access token from cookies or body
     try{
@@ -323,5 +340,6 @@ export {
     updateUserRole,
     updateCurrentAccountDetails,
     changeCurrentPassword,
-    getAllUsernames
+    getAllUsernames,
+    currentUser
 }

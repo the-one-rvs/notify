@@ -20,4 +20,7 @@ app.use("/api/v1/users", userRouter)
 import authRouter from './routes/auth.routes.js'
 app.use("/api/v1/auth", authRouter)
 
+import postRouter from './routes/post.routes.js'
+app.use("/api/v1/post", postRouter)
+
 export { app }
