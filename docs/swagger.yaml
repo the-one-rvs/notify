@@ -1,0 +1,286 @@
+openapi: 3.0.0
+info:
+  title: Notify API
+  version: 1.0.0
+  description: Full backend documentation for authentication, user, and post management
+
+servers:
+  - url: http://localhost:5000/api/v1
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  # ------------------- AUTH ROUTES -------------------
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user with username/email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+      responses:
+        200:
+          description: Login successful
+        401:
+          description: Invalid credentials
+
+  /auth/logout:
+    get:
+      tags: [Auth]
+      summary: Logout user
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Logged out
+
+  /auth/current-user:
+    get:
+      tags: [Auth]
+      summary: Get current logged-in user
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: User profile
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change current user's password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - oldPassword
+                - newPassword
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        200:
+          description: Password changed
+
+  /auth/update-account-details:
+    patch:
+      tags: [Auth]
+      summary: Update current user's profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+      responses:
+        200:
+          description: Account updated
+
+  /auth/refresh-tokens:
+    post:
+      tags: [Auth]
+      summary: Refresh JWT tokens
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Tokens refreshed
+
+  /auth/google:
+    get:
+      tags: [Auth]
+      summary: Start Google OAuth login
+      responses:
+        302:
+          description: Redirect to Google
+
+  /auth/google/callback:
+    get:
+      tags: [Auth]
+      summary: Google OAuth callback
+      responses:
+        200:
+          description: Success or redirect
+
+  # ------------------- USER ROUTES -------------------
+
+  /users/register:
+    post:
+      tags: [Users]
+      summary: Register a new user (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUser'
+      responses:
+        201:
+          description: User registered
+
+  /users/all-usernames:
+    get:
+      tags: [Users]
+      summary: Get all usernames (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List of usernames
+
+  /users/update-user-role:
+    post:
+      tags: [Users]
+      summary: Update user role (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRole'
+      responses:
+        200:
+          description: Role updated
+
+  # ------------------- POST ROUTES -------------------
+
+  /post/create-post:
+    post:
+      tags: [Posts]
+      summary: Create a new post (admin/member)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Post'
+      responses:
+        201:
+          description: Post created
+
+  /post/get-all-posts:
+    get:
+      tags: [Posts]
+      summary: Get all posts (any user)
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: All posts returned
+
+  /post/getpost/{username}/{postNumber}:
+    get:
+      tags: [Posts]
+      summary: Get specific post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: postNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Post found
+
+  /post/getpost/{username}:
+    get:
+      tags: [Posts]
+      summary: Get all posts by a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: User's posts found
+
+  /post/updatepost/{username}/{postNumber}:
+    patch:
+      tags: [Posts]
+      summary: Update a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: postNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Post'
+      responses:
+        200:
+          description: Post updated
+
+  /post/deletepost/{username}/{postNumber}:
+    delete:
+      tags: [Posts]
+      summary: Delete a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: postNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Post deleted

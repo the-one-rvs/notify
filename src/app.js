@@ -6,6 +6,12 @@ import passport from "./middleware/passport.middleware.js";
 
 const app = express()
 
+import swaggerUi from 'swagger-ui-express'
+import YAML from 'yamljs'
+
+const swaggerDocument = YAML.load('./docs/swagger.yaml')
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
+
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credential: true
