@@ -222,16 +222,11 @@ paths:
               required:
                 - title
                 - content
-                - postMedia
               properties:
                 title:
                   type: string
                 content:
                   type: string
-                tags:
-                  type: array
-                  items:
-                    type: string
                 postMedia:
                   type: string
                   format: binary

@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import redis from "../utils/redisClient.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 // Create a new post
 const createPost = asyncHandler(async (req, res) => {
