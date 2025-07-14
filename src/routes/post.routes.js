@@ -12,7 +12,7 @@ import {
 
 const router = Router();
 
-router.route("/cerate-post").post(verifyJWT, allowRoles("admin", "member"), createPost)
+router.route("/cerate-post").post(verifyJWT, allowRoles("admin", "member"),upload.single("postMedia"), createPost)
 router.route("/get-all-posts").get(verifyJWT, getAllPosts)
 router.route("/getpost/:username/:postNumber").get(verifyJWT, getPostByPostNumberAndOwnerName)
 router.route("/getpost/:username").get(verifyJWT, getPostsByOwnerName)
