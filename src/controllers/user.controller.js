@@ -2,6 +2,7 @@ import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js";
+import jwt from "jsonwebtoken"
 
 
 const generateAccessAndRefereshTokens = async (userID) => {
@@ -198,10 +199,10 @@ const currentUser = asyncHandler(async(req, res) => {
     ))
 })
 
-const refreshUserAccessToken = asyncHandler(async (req,res) => {
+const refreshUserTokens = asyncHandler(async (req,res) => {
     // Get access token from cookies or body
     try{
-        const incomingRefreshToken = req.cookie.refreshToken || req.body.refreshToken
+        const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
         //refresh token not found 
         if (!incomingRefreshToken){
             throw new ApiError(401, "Unauth Request")
@@ -336,7 +337,7 @@ export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshUserAccessToken,
+    refreshUserTokens,
     updateUserRole,
     updateCurrentAccountDetails,
     changeCurrentPassword,

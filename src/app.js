@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import session from "express-session"; 
+// import session from "express-session"; 
 import passport from "./middleware/passport.middleware.js";
 
 const app = express()
@@ -11,13 +11,13 @@ app.use(cors({
     credential: true
 }))
 
-app.use(session({
-    secret: process.env.SESSION_SECRET || "notify_secret",
-    resave: false,
-    saveUninitialized: false
-}));
+// app.use(session({
+//     secret: process.env.SESSION_SECRET || "notify_secret",
+//     resave: false,
+//     saveUninitialized: false
+// }));
 app.use(passport.initialize());
-app.use(passport.session());
+// app.use(passport.session());
 
 app.use(express.json({limit: "20kb"}))
 app.use(express.urlencoded({extended: true, limit: "20kb" }))
