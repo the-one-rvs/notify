@@ -9,14 +9,25 @@ import redis from "../utils/redisClient.js";
 const createPost = asyncHandler(async (req, res) => {
     try {       
         await redis.del(`allPosts`)
-        const { postTitle, postContent, postMedia } = req.body;
+        const { postTitle, postContent} = req.body;
         if (!postTitle || !postContent) {
             throw new ApiError(400, "Post title and content are required");
+        }
+        const postMediaLocalPath = req.file?.path
+
+        if (!postMediaLocalPath) {
+            throw new ApiError(400, "Avatar missing")
+        }
+
+        const postMedia = await uploadOnCloudinary(postMediaLocalPath)
+
+        if (!postMedia.url) {
+            throw new ApiError(400, "Something is messy Can't find avatar url")
         }
         const post = await Post.create({
             postTitle,
             postContent,
-            postMedia,
+            postMedia: postMedia.url,
             owner: req.user._id
         });
         console.log("Post created successfully")

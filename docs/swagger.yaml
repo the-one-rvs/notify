@@ -19,8 +19,6 @@ security:
 
 paths:
 
-  # ------------------- AUTH ROUTES -------------------
-
   /auth/login:
     post:
       tags: [Auth]
@@ -30,7 +28,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserLogin'
+              type: object
+              required:
+                - password
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
       responses:
         200:
           description: Login successful
@@ -128,7 +135,13 @@ paths:
         200:
           description: Success or redirect
 
-  # ------------------- USER ROUTES -------------------
+  /auth/seed-admin:
+    post:
+      tags: [Auth]
+      summary: Create initial admin user
+      responses:
+        201:
+          description: Admin seeded
 
   /users/register:
     post:
@@ -141,7 +154,21 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterUser'
+              type: object
+              required:
+                - username
+                - email
+                - password
+                - role
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
       responses:
         201:
           description: User registered
@@ -167,12 +194,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateUserRole'
+              type: object
+              required:
+                - userId
+                - role
+              properties:
+                userId:
+                  type: string
+                role:
+                  type: string
       responses:
         200:
           description: Role updated
-
-  # ------------------- POST ROUTES -------------------
 
   /post/create-post:
     post:
@@ -183,9 +216,25 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Post'
+              type: object
+              required:
+                - title
+                - content
+                - postMedia
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                postMedia:
+                  type: string
+                  format: binary
       responses:
         201:
           description: Post created
@@ -259,7 +308,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Post'
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
       responses:
         200:
           description: Post updated

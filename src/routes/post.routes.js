@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { allowRoles } from "../middleware/roleCheck.middleware.js";
+import {upload} from "../middleware/multer.middleware.js"
 import { 
     createPost, 
     deletePostByPostNumberAndOwnerName, 
@@ -12,7 +13,7 @@ import {
 
 const router = Router();
 
-router.route("/cerate-post").post(verifyJWT, allowRoles("admin", "member"),upload.single("postMedia"), createPost)
+router.route("/cerate-post").post(verifyJWT, allowRoles("admin", "member"), upload.single("postMedia"), createPost)
 router.route("/get-all-posts").get(verifyJWT, getAllPosts)
 router.route("/getpost/:username/:postNumber").get(verifyJWT, getPostByPostNumberAndOwnerName)
 router.route("/getpost/:username").get(verifyJWT, getPostsByOwnerName)
