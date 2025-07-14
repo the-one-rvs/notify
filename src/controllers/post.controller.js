@@ -1,4 +1,5 @@
 import { Post } from "../models/post.models.js";
+import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -16,6 +17,7 @@ const createPost = asyncHandler(async (req, res) => {
             postMedia,
             owner: req.user._id
         });
+        console.log("Post created successfully")
         return res.status(201).json(new ApiResponse(201, post, "Post created successfully"));
     } catch (error) {
         throw new ApiError(400, error?.message || "Error in creating Post")
@@ -43,59 +45,149 @@ const getAllPosts = asyncHandler(async (req, res) => {
                 postMedia: 1,
                 createdAt: 1,
                 updatedAt: 1,
+                postNumber: 1,
                 owner: "$ownerInfo.username"
             }
         }
     ]);
+    console.log("Posts fetched successfully")
     return res.status(200).json(new ApiResponse(200, posts, "Posts fetched successfully"));
 });
 
-// Get a single post by ID
-const getPostByPostNumberAndOwner = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const post = await Post.findById(id).populate("owner", "username email");
-    if (!post) {
-        throw new ApiError(404, "Post not found");
+const getPostByPostNumberAndOwnerName = asyncHandler(async (req, res) => {
+    const { username, postNumber  } = req.params;
+    const user = await User.findOne({ username: username })
+    if (!user){
+        throw new ApiError(400, "No User is there with the given Username" )
     }
-    return res.status(200).json(new ApiResponse(200, post, "Post fetched successfully"));
+    const post = await Post.findOne({
+        postNumber: postNumber,
+        owner: user._id
+    })
+    if (!post) {
+        throw new ApiError(404, "No post found for this user with the given post number");
+    }
+    console.log("The Post is Fetched")
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        post,
+        "The Post is Fetched"
+    ))
+});
+
+
+const getPostsByOwnerName = asyncHandler(async (req,res) =>{
+    const { username } = req.params;
+    const user = await User.findOne({ username: username })
+    if (!user){
+        throw new ApiError(400, "No User is there with the given Username" )
+    }
+    const posts = await Post.find({ owner: user._id });
+    const resPosts = await Post.aggregate([{
+        $match: { owner: user._id }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "ownerInfo"
+            }
+        },
+        {
+            $unwind: "$ownerInfo"
+        },
+        {
+            $project: {
+                postTitle: 1,
+                postContent: 1,
+                postMedia: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                postNumber: 1,
+                owner: "$ownerInfo.username",
+                ownerFullName: "$ownerInfo.fullname"
+            }
+    }])
+    console.log(`ALL Posts fetched for username ${username}.`)
+    return res.status(200)
+    .json(new ApiResponse(
+        200,
+        resPosts,
+        `ALL Posts fetched for username ${username}.`
+    ))
+})
+
+const deletePostByPostNumberAndOwnerName = asyncHandler(async (req, res) => {
+    const { username, postNumber  } = req.params;
+    const user = await User.findOne({ username: username })
+    if (!user){
+        throw new ApiError(400, "No User is there with the given Username" )
+    }
+    const post = await Post.findOne({
+        postNumber: postNumber,
+        owner: user._id
+    })
+    if (!post) {
+        throw new ApiError(404, "No post found for this user with the given post number");
+    }
+    if (user.role === "admin" || req.user.username === username){
+        await post.deleteOne();
+
+        // Adjust postNumbers for remaining posts
+        await Post.updateMany(
+            {
+                owner: user._id,
+                postNumber: { $gt: Number(postNumber) }
+            },
+            { $inc: { postNumber: -1 } }
+        );
+    }
+    else {
+        throw new ApiError(400, "Your Role Didn't Match the desired one")
+    }
+    console.log("The Post is Deleted")
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        {},
+        "The Post is Deleted"
+    ))
 });
 
 // Update a post
 const updatePost = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { postTitle, postContent, postMedia } = req.body;
-    const post = await Post.findById(id);
+    const { username, postNumber  } = req.params;
+    const user = await User.findOne({ username: username })
+    if (!user){
+        throw new ApiError(400, "No User is there with the given Username" )
+    }
+    const post = await Post.findOne({
+        postNumber: postNumber,
+        owner: user._id
+    })
     if (!post) {
-        throw new ApiError(404, "Post not found");
+        throw new ApiError(404, "No post found for this user with the given post number");
     }
-    if (String(post.owner) !== String(req.user._id)) {
-        throw new ApiError(403, "You are not allowed to update this post");
+    const { postTitle, postContent, postMedia } = req.body;
+    if (user.role === "admin" || req.user.username === username){
+        post.postTitle = postTitle || post.postTitle;
+        post.postContent = postContent || post.postContent;
+        post.postMedia = postMedia || post.postMedia;
+        await post.save({ValidityState: false});
     }
-    post.postTitle = postTitle || post.postTitle;
-    post.postContent = postContent || post.postContent;
-    post.postMedia = postMedia || post.postMedia;
-    await post.save({ValidityState: false});
     return res.status(200).json(new ApiResponse(200, post, "Post updated successfully"));
 });
 
-// Delete a post
-const deletePost = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const post = await Post.findById(id);
-    if (!post) {
-        throw new ApiError(404, "Post not found");
-    }
-    if (String(post.owner) !== String(req.user._id)) {
-        throw new ApiError(403, "You are not allowed to delete this post");
-    }
-    await post.deleteOne();
-    return res.status(200).json(new ApiResponse(200, {}, "Post deleted successfully"));
-});
 
 export {
     createPost,
     getAllPosts,
-    getPostByPostNumberAndOwner,
+    getPostByPostNumberAndOwnerName,
     updatePost,
-    deletePost
+    deletePostByPostNumberAndOwnerName,
+    getPostsByOwnerName,
 }

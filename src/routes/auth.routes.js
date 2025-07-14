@@ -9,8 +9,21 @@ import {
     seedAdmin,
     updateCurrentAccountDetails } from "../controllers/user.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
+import passport from "../middleware/passport.middleware.js";
+
 
 const router = Router()
+
+//OAuth
+router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+
+router.get("/google/callback",
+    passport.authenticate("google", { failureRedirect: "/" }),
+    (req, res) => {
+        // Successful authentication
+        res.json({ user: req.user, message: "Google OAuth successful" });
+    }
+);
 
 router.route("/seed-admin").post(seedAdmin)
 router.route("/login").post(loginUser)
