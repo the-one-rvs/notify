@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken"
+import redis from "../utils/redisClient.js";
 
 
 const generateAccessAndRefereshTokens = async (userID) => {
@@ -33,6 +34,7 @@ const generateAccessAndRefereshTokens = async (userID) => {
 const seedAdmin = asyncHandler(async(req,res)=>{
     //Get the data 
     const {fullname, username, email, password, role} = req.body
+    await redis.del("allUsernames"); 
     if (role !== "admin") {
         throw new ApiError(403, "Only admin role can be seeded");
     }
@@ -73,7 +75,7 @@ const seedAdmin = asyncHandler(async(req,res)=>{
 const registerUser = asyncHandler(async (req, res)=>{
     //user data from frontend 
     const {fullname, username, email, password, role} = req.body
-
+    await redis.del("allUsernames"); 
     if (
         [fullname, email, username, password].some((field) => field?.trim() === "")
     ) {
@@ -142,12 +144,15 @@ const loginUser = asyncHandler (async (req,res)=>{
     const {accessToken, refreshToken} = await generateAccessAndRefereshTokens(user._id)
 
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+    if (!loggedInUser){
+        throw new ApiError(400, "Something Fishy! Can't get loogedin user info")
+    }
 
     const options = {
         httpOnly: true,
         secure: true
     }
-
+    await redis.set(`user:${loggedInUser._id}:profile`, JSON.stringify(loggedInUser), "EX", 3600);
     return res
     .status(200)
     .cookie("accessToken", accessToken, options)
@@ -174,7 +179,8 @@ const logoutUser = asyncHandler(async (req,res) => {
         httpOnly: true,
         secure: true
     };
-    // returning response that user looged out successfully 
+    // returning response that user looged out successfully
+    await redis.del(`user:${user._id}:profile`);
     return res
         .status(200)
         .clearCookie("accessToken", options)
@@ -184,12 +190,19 @@ const logoutUser = asyncHandler(async (req,res) => {
 
 const currentUser = asyncHandler(async(req, res) => {
     const user = req.user
+    const redisKey = `user:${user._id}:profile`;
+    const cachedUser = await redis.get(redisKey);
+    if (cachedUser) {
+        return res.status(200).json(new ApiResponse(200, JSON.parse(cachedUser), "User from cache"));
+    }
     const checkUser = await User.findById(user._id).select(
         "-password -refreshToken"
     )
     if (!checkUser){
         throw new ApiError(400, "User is not found in DB")
     }
+    await redis.set(redisKey, JSON.stringify(checkUser), "EX", 3600);
+
     return res
     .status(200)
     .json(new ApiResponse(
@@ -281,6 +294,8 @@ const updateUserRole = asyncHandler(async(req,res) => {
 
 const updateCurrentAccountDetails = asyncHandler(async (req,res) => {
     const {fullname, username, email} = req.body
+    await redis.del(`user:${user._id}:profile`);
+    await redis.del("allUsernames"); 
 
     if (!fullname || !email || !username) {
         throw new ApiError(404, "All fields are required")
@@ -322,8 +337,11 @@ const changeCurrentPassword = asyncHandler(async(req,res)=> {
 
 const getAllUsernames = asyncHandler(async (req, res) => {
     try {
+        const cached = await redis.get("allUsernames");
+        if (cached) return res.status(200).json(new ApiResponse(200, JSON.parse(cached), "Usernames from cache"));
         const users = await User.find({}, "username");
         const usernames = users.map(user => user.username);
+        await redis.set("allUsernames", JSON.stringify(usernames), "EX", 3600)
         return res.status(200).json(new ApiResponse(200, usernames, "Usernames fetched successfully"));
     
     } catch (error) {

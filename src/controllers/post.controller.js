@@ -3,10 +3,12 @@ import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import redis from "../utils/redisClient.js";
 
 // Create a new post
 const createPost = asyncHandler(async (req, res) => {
-    try {
+    try {       
+        await redis.del(`allPosts`)
         const { postTitle, postContent, postMedia } = req.body;
         if (!postTitle || !postContent) {
             throw new ApiError(400, "Post title and content are required");
@@ -26,6 +28,12 @@ const createPost = asyncHandler(async (req, res) => {
 
 // Get all posts
 const getAllPosts = asyncHandler(async (req, res) => {
+    const redisKey = "allPosts";
+    const cachedPost = await redis.get(redisKey);
+    if (cachedPost){
+        return res.status(200)
+        .json(new ApiResponse(200, JSON.parse(cachedPost), "Showing All Posts from Cache"))
+    }
     const posts = await Post.aggregate([
         {
             $lookup: {
@@ -51,11 +59,23 @@ const getAllPosts = asyncHandler(async (req, res) => {
         }
     ]);
     console.log("Posts fetched successfully")
+    await redis.set(redisKey, JSON.stringify(posts), "EX", 3600)
     return res.status(200).json(new ApiResponse(200, posts, "Posts fetched successfully"));
 });
 
 const getPostByPostNumberAndOwnerName = asyncHandler(async (req, res) => {
     const { username, postNumber  } = req.params;
+    const redisKey = `post:${username}:${postNumber}`;
+
+    const cachedPosts = await redis.get(redisKey);
+    if (cachedPosts) {
+        return res.status(200).json(new ApiResponse(
+            200,
+            JSON.parse(cachedPosts),
+            "Post cached from redis"
+        ));
+    }
+
     const user = await User.findOne({ username: username })
     if (!user){
         throw new ApiError(400, "No User is there with the given Username" )
@@ -64,6 +84,9 @@ const getPostByPostNumberAndOwnerName = asyncHandler(async (req, res) => {
         postNumber: postNumber,
         owner: user._id
     })
+
+    await redis.set(redisKey, JSON.stringify(post), "EX", 3600); 
+
     if (!post) {
         throw new ApiError(404, "No post found for this user with the given post number");
     }
@@ -80,6 +103,12 @@ const getPostByPostNumberAndOwnerName = asyncHandler(async (req, res) => {
 
 const getPostsByOwnerName = asyncHandler(async (req,res) =>{
     const { username } = req.params;
+    const redisKey = `usernamePosts:${ username }`;
+    const cachedPosts = redis.get(redisKey);
+    if (cachedPosts){
+        return res.status(200)
+        .json(new ApiResponse(200, JSON.parse(cachedPosts), "`ALL Posts fetched for username ${username} through Cache`"))
+    }
     const user = await User.findOne({ username: username })
     if (!user){
         throw new ApiError(400, "No User is there with the given Username" )
@@ -112,6 +141,7 @@ const getPostsByOwnerName = asyncHandler(async (req,res) =>{
             }
     }])
     console.log(`ALL Posts fetched for username ${username}.`)
+    await redis.set(redisKey, JSON.stringify(resPosts), "EX", 3600);
     return res.status(200)
     .json(new ApiResponse(
         200,
@@ -149,6 +179,9 @@ const deletePostByPostNumberAndOwnerName = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Your Role Didn't Match the desired one")
     }
     console.log("The Post is Deleted")
+    await redis.del(`post:${username}:${postNumber}`)
+    await redis.del(`allPosts`)
+    await redis.del(`usernamePosts:${ username }`)
     return res
     .status(200)
     .json(new ApiResponse(
@@ -179,6 +212,9 @@ const updatePost = asyncHandler(async (req, res) => {
         post.postMedia = postMedia || post.postMedia;
         await post.save({ValidityState: false});
     }
+    await redis.del(`post:${username}:${postNumber}`)
+    await redis.del(`allPosts`)
+    await redis.del(`usernamePosts:${ username }`)
     return res.status(200).json(new ApiResponse(200, post, "Post updated successfully"));
 });
 
