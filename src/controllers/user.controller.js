@@ -4,6 +4,15 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken"
 import redis from "../utils/redisClient.js";
+import { activeSessionGauge, 
+    adminSeeded, 
+    jwtFailureCounter, 
+    loginSuccessCounter, 
+    refreshUserTokenMetrics, 
+    roleUpdateMetrics, 
+    updateDetailsMetrics, 
+    loginDurationSummary,
+    mongoQueryDuration } from "../metrics.js";
 
 
 const generateAccessAndRefereshTokens = async (userID) => {
@@ -19,14 +28,21 @@ const generateAccessAndRefereshTokens = async (userID) => {
         const accessToken = await user.generateAccessToken()
         const refreshToken = await user.generateRefreshToken()
 
+        if (!accessToken || !refreshToken){
+            jwtFailureCounter.inc()
+            throw new ApiError(400, "Something is Fishy Can't get required tokens")
+        }
+
         // saving refresh token in db 
         user.refreshToken = refreshToken
+        const timer = mongoQueryDuration.startTimer({ operation: "findOne", collection: "users" });
         await user.save({validateBeforeSave: false})
-
+        timer()
         // returning access and refresh tokens 
         return {accessToken, refreshToken}
 
     } catch (error) {
+        jwtFailureCounter.inc()
         throw new ApiError (400, error?.message || "Error while creating access and refresh tokens")
     }
 }
@@ -66,7 +82,7 @@ const seedAdmin = asyncHandler(async(req,res)=>{
     if (!createdUser) {
         throw new ApiError(500, "Something went wrong while registering the user")
     }
-
+    adminSeeded.inc()
     return res.status(201).json(
         new ApiResponse(200, createdUser, "User registered Successfully")
     )
@@ -120,7 +136,7 @@ const registerUser = asyncHandler(async (req, res)=>{
 const loginUser = asyncHandler (async (req,res)=>{
     //Check if data is given properly or not 
     const {email, username, password} = req.body
-
+    const end = loginDurationSummary.startTimer({ route: "/login" });
     if (!username && !email){
         throw new ApiError(400, "username or email required")
     }
@@ -153,6 +169,9 @@ const loginUser = asyncHandler (async (req,res)=>{
         secure: true
     }
     await redis.set(`user:${loggedInUser._id}:profile`, JSON.stringify(loggedInUser), "EX", 3600);
+    loginSuccessCounter.inc()
+    activeSessionGauge.inc()
+    end()
     return res
     .status(200)
     .cookie("accessToken", accessToken, options)
@@ -181,6 +200,7 @@ const logoutUser = asyncHandler(async (req,res) => {
     };
     // returning response that user looged out successfully
     await redis.del(`user:${user._id}:profile`);
+    activeSessionGauge.dec()
     return res
         .status(200)
         .clearCookie("accessToken", options)
@@ -239,7 +259,7 @@ const refreshUserTokens = asyncHandler(async (req,res) => {
         }
     
         const {accessToken, newRefreshToken} = await generateAccessAndRefereshTokens(user._id)
-    
+        refreshUserTokenMetrics.inc()
         return res
         .status(200)
         .cookie("accessToken" , accessToken, options)
@@ -281,7 +301,7 @@ const updateUserRole = asyncHandler(async(req,res) => {
 
     user.role = role
     user.save({validateBeforeSave: false}) 
-
+    roleUpdateMetrics.inc()
     res
     .status(200)
     .json(new ApiResponse(200, {
@@ -312,7 +332,7 @@ const updateCurrentAccountDetails = asyncHandler(async (req,res) => {
         },
         {new: true}
     ).select("-password")
-
+    updateDetailsMetrics.inc()
     return res
     .status(200)
     .json ( new ApiResponse(200, user, "Account Details Updated"))

@@ -12,6 +12,16 @@ import YAML from 'yamljs'
 const swaggerDocument = YAML.load('./docs/swagger.yaml')
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
+import { prometheusMiddleware } from "./middleware/httpmetrics.middleware.js";
+app.use(prometheusMiddleware);
+
+// Expose metrics route
+import { register } from "./metrics.js";
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credential: true

@@ -5,6 +5,10 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import redis from "../utils/redisClient.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { activePost, 
+    fetchPost, 
+    postCreatedCounter, 
+    updationOfPosts } from "../metrics.js";
 
 // Create a new post
 const createPost = asyncHandler(async (req, res) => {
@@ -32,6 +36,8 @@ const createPost = asyncHandler(async (req, res) => {
             owner: req.user._id
         });
         console.log("Post created successfully")
+        postCreatedCounter.inc()
+        activePost.inc()
         return res.status(201).json(new ApiResponse(201, post, "Post created successfully"));
     } catch (error) {
         throw new ApiError(400, error?.message || "Error in creating Post")
@@ -71,6 +77,7 @@ const getAllPosts = asyncHandler(async (req, res) => {
         }
     ]);
     console.log("Posts fetched successfully")
+    fetchPost.inc()
     await redis.set(redisKey, JSON.stringify(posts), "EX", 3600)
     return res.status(200).json(new ApiResponse(200, posts, "Posts fetched successfully"));
 });
@@ -97,12 +104,13 @@ const getPostByPostNumberAndOwnerName = asyncHandler(async (req, res) => {
         owner: user._id
     })
 
-    await redis.set(redisKey, JSON.stringify(post), "EX", 3600); 
-
+    
     if (!post) {
         throw new ApiError(404, "No post found for this user with the given post number");
     }
+    await redis.set(redisKey, JSON.stringify(post), "EX", 3600); 
     console.log("The Post is Fetched")
+    fetchPost.inc()
     return res
     .status(200)
     .json(new ApiResponse(
@@ -154,6 +162,7 @@ const getPostsByOwnerName = asyncHandler(async (req,res) =>{
     }])
     console.log(`ALL Posts fetched for username ${username}.`)
     await redis.set(redisKey, JSON.stringify(resPosts), "EX", 3600);
+    fetchPost.inc()
     return res.status(200)
     .json(new ApiResponse(
         200,
@@ -194,6 +203,7 @@ const deletePostByPostNumberAndOwnerName = asyncHandler(async (req, res) => {
     await redis.del(`post:${username}:${postNumber}`)
     await redis.del(`allPosts`)
     await redis.del(`usernamePosts:${ username }`)
+    activePost.dec()
     return res
     .status(200)
     .json(new ApiResponse(
@@ -227,6 +237,7 @@ const updatePost = asyncHandler(async (req, res) => {
     await redis.del(`post:${username}:${postNumber}`)
     await redis.del(`allPosts`)
     await redis.del(`usernamePosts:${ username }`)
+    updationOfPosts.inc()
     return res.status(200).json(new ApiResponse(200, post, "Post updated successfully"));
 });
 
