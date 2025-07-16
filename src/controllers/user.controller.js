@@ -18,8 +18,9 @@ import { activeSessionGauge,
 const generateAccessAndRefereshTokens = async (userID) => {
     try {
         //Find user from userID 
+        const timer2 = mongoQueryDuration.startTimer({ operation: "findById", collection: "users", function: "generateAccessAndRefereshTokens" });
         const user = await User.findById(userID)
-
+        timer2()
         if (!user){
             throw new ApiError(400, "User not found while creating the tokens")
         }
@@ -35,7 +36,7 @@ const generateAccessAndRefereshTokens = async (userID) => {
 
         // saving refresh token in db 
         user.refreshToken = refreshToken
-        const timer = mongoQueryDuration.startTimer({ operation: "findOne", collection: "users" });
+        const timer = mongoQueryDuration.startTimer({ operation: "save", collection: "users", function: "generateAccessAndRefereshTokens" });
         await user.save({validateBeforeSave: false})
         timer()
         // returning access and refresh tokens 
@@ -59,14 +60,16 @@ const seedAdmin = asyncHandler(async(req,res)=>{
     ) {
         throw new ApiError(400, "All fields are required")
     }
+    const op1 = mongoQueryDuration.startTimer({ operation: "findOne", collection: "users", function: "seedAdmin" });
     const existeduser = await User.findOne({
         $or: [{ username }, { email }]
     })
-
+    op1()
     if (existeduser){
         throw new ApiError(400, "User Already Exsists")
     }
     // Admin User Saved in Database 
+    const op2 = mongoQueryDuration.startTimer({ operation: "create", collection: "users", function: "seedAdmin"});
     const user = await User.create({
         fullname,
         email, 
@@ -74,10 +77,12 @@ const seedAdmin = asyncHandler(async(req,res)=>{
         username: username.toLowerCase(),
         role
     })
-
+    op2()
+    const op3 = mongoQueryDuration.startTimer({ operation: "findById", collection: "users", function: "seedAdmin"});
     const createdUser = await User.findById(user._id).select(
         "-password -refreshToken"
     )
+    op3()
 
     if (!createdUser) {
         throw new ApiError(500, "Something went wrong while registering the user")
@@ -140,10 +145,11 @@ const loginUser = asyncHandler (async (req,res)=>{
     if (!username && !email){
         throw new ApiError(400, "username or email required")
     }
-
+    const op1 = mongoQueryDuration.startTimer({ operation: "findOne", collection: "users", function: "loginUser"});
     const user = await User.findOne({
         $or: [{username}, {email}]
     })
+    op1()
 
     if (!user){
         throw new ApiError(400, "User not found")

@@ -5,7 +5,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import redis from "../utils/redisClient.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import { activePost, 
+import { activePostInSession, 
     fetchPost, 
     postCreatedCounter, 
     updationOfPosts } from "../metrics.js";
@@ -37,7 +37,7 @@ const createPost = asyncHandler(async (req, res) => {
         });
         console.log("Post created successfully")
         postCreatedCounter.inc()
-        activePost.inc()
+        activePostInSession.inc()
         return res.status(201).json(new ApiResponse(201, post, "Post created successfully"));
     } catch (error) {
         throw new ApiError(400, error?.message || "Error in creating Post")
@@ -203,7 +203,7 @@ const deletePostByPostNumberAndOwnerName = asyncHandler(async (req, res) => {
     await redis.del(`post:${username}:${postNumber}`)
     await redis.del(`allPosts`)
     await redis.del(`usernamePosts:${ username }`)
-    activePost.dec()
+    activePostInSession.dec()
     return res
     .status(200)
     .json(new ApiResponse(

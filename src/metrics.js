@@ -17,7 +17,7 @@ export const httpRequestDurationHistogram = new client.Histogram({
   labelNames: ["method", "route", "status"],
   buckets: [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 1, 2, 5] // Adjust based on app latency
 });
-
+register.registerMetric(httpRequestDurationHistogram);
 // Login Success
 export const loginSuccessCounter = new client.Counter({
   name: "notify_login_success_total",
@@ -39,11 +39,11 @@ export const postCreatedCounter = new client.Counter({
 });
 register.registerMetric(postCreatedCounter);
 
-export const activePost = new client.Gauge({
-  name: "notify_post_active_total",
+export const activePostInSession = new client.Gauge({
+  name: "notify_post_active_in_session_total",
   help: "Number of posts created",
 })
-register.registerMetric(activePost)
+register.registerMetric(activePostInSession)
 
 export const fetchPost = new client.Counter({
   name: "notify_fetched_post_total",
@@ -98,8 +98,14 @@ register.registerMetric(loginDurationSummary);
 export const mongoQueryDuration = new client.Histogram({
   name: "notify_mongodb_query_duration_seconds",
   help: "MongoDB query duration",
-  labelNames: ["operation", "collection"],
+  labelNames: ["operation", "collection", "function"],
 });
 register.registerMetric(mongoQueryDuration);
+
+export const mongoDBConnect = new client.Histogram({
+  name: "notify_mongodb_connection_duration_seconds",
+  help: "MongoDB Connection Duration"
+})
+register.registerMetric(mongoDBConnect)
 
 export { register };
