@@ -104,7 +104,8 @@ register.registerMetric(mongoQueryDuration);
 
 export const mongoDBConnect = new client.Histogram({
   name: "notify_mongodb_connection_duration_seconds",
-  help: "MongoDB Connection Duration"
+  help: "MongoDB Connection Duration",
+  buckets: [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 1, 2, 5, 15]
 })
 register.registerMetric(mongoDBConnect)
 
