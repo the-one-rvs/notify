@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.models.js";
+import { oauthduration, oauthTokenCreation } from "../metrics.js";
 
 export const generateAccessToken = (user) => {
     return jwt.sign(
@@ -25,6 +26,7 @@ export const generateRefreshToken = (user) => {
 };
 
 const tokens = asyncHandler( async (req, res) => {
+    const op2 = oauthduration.startTimer({OperationType: "Token Genration"})
     const user = req.user;
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
@@ -38,6 +40,8 @@ const tokens = asyncHandler( async (req, res) => {
     await user.save({validateBeforeSave: false});
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
     // Send both in secure cookies
+    oauthTokenCreation.inc()
+    op2()
     return res.status(200)
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)

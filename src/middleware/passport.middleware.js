@@ -2,9 +2,11 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
+import { oauthcallback, oauthduration } from "../metrics.js";
 
 
 // Google OAuth Strategy
+const op1 = oauthduration.startTimer({OperationType: "Looging In"})
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -36,6 +38,8 @@ passport.use(new GoogleStrategy({
         if (!user) {
             return done(null, false);  // this will prevent `req.user` from being set
         }
+        oauthcallback.inc()
+        op1()
         return done(null, user);
     } catch (err) {
         return done(err, null);

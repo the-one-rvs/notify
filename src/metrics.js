@@ -87,7 +87,7 @@ export const updateDetailsMetrics = new client.Counter({
 })
 
 export const loginDurationSummary = new client.Summary({
-  name: "login_duration_seconds",
+  name: "notify_login_duration_seconds",
   help: "Login route duration in seconds",
   labelNames: ["route"],
 });
@@ -108,5 +108,25 @@ export const mongoDBConnect = new client.Histogram({
   buckets: [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 1, 2, 5, 15]
 })
 register.registerMetric(mongoDBConnect)
+
+export const oauthTokenCreation = new client.Counter({
+  name: "notify_oauth_token_creation_counter",
+  help: "Counts How many times tokens are created which also counts oauth success"
+})
+
+export const oauthcallback = new client.Counter({
+  name: "notify_oauth_callback_counter",
+  help: "Counts how many times oauth callback on /google/callback"
+})
+register.registerMetric(oauthTokenCreation)
+register.registerMetric(oauthcallback)
+
+export const oauthduration = new client.Histogram({
+  name: "notify_oauth_duration_seconds",
+  help: "Time Taken for OAuth",
+  labelNames: ["OperationType"],
+  buckets: [1, 2, 5, 10, 20, 30, 40, 50]
+})
+register.registerMetric(oauthduration)
 
 export { register };
