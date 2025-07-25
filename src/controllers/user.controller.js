@@ -167,7 +167,7 @@ const loginUser = asyncHandler (async (req,res)=>{
 
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
     if (!loggedInUser){
-        throw new ApiError(400, "Something Fishy! Can't get loogedin user info")
+        throw new ApiError(400, "Something Fishy! Can't get loggedin user info")
     }
 
     const options = {
